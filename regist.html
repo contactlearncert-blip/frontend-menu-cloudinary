@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Inscription – Gestion de Restaurant</title>
+  <title>Inscription – Restaurant</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
 
@@ -17,16 +17,20 @@
     body {
       background-color: #f9f7f0;
       color: #2c2c2c;
-      padding: 20px;
-      max-width: 600px;
-      margin: 40px auto;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 16px;
     }
 
     .container {
       background: white;
-      padding: 32px;
       border-radius: 16px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      padding: 32px;
+      width: 100%;
+      max-width: 500px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
     }
 
     h1 {
@@ -37,12 +41,12 @@
     }
 
     .form-group {
-      margin-bottom: 20px;
+      margin-bottom: 18px;
     }
 
     label {
       display: block;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
       font-weight: 500;
       color: #444;
     }
@@ -69,125 +73,109 @@
     }
 
     button:hover {
-      background: #254a3e;
+      background: #25473d;
     }
 
     .result {
       margin-top: 24px;
-      padding: 20px;
-      background: #e5d9c5;
-      border-radius: 12px;
-      display: none;
+      padding: 16px;
+      background: #e5f0eb;
+      border-radius: 8px;
+      font-size: 0.95rem;
     }
 
-    .result h2 {
-      margin-bottom: 16px;
+    .result h3 {
+      margin-bottom: 10px;
       color: #2e5a4d;
     }
 
-    .link-box {
-      margin: 12px 0;
+    .result p {
+      margin: 6px 0;
     }
 
-    .link-box a {
+    .link {
       color: #2e5a4d;
       text-decoration: none;
       word-break: break-all;
     }
 
-    .link-box a:hover {
+    .link:hover {
       text-decoration: underline;
     }
 
     .error {
       color: #d32f2f;
-      margin-top: 12px;
-      font-weight: 500;
+      background: #fdecea;
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 16px;
     }
 
-    .hidden {
-      display: none;
+    @media (max-width: 480px) {
+      .container {
+        padding: 24px 20px;
+      }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Inscrivez votre restaurant</h1>
-
-    <form id="registerForm">
-      <div class="form-group">
-        <label for="restaurantName">Nom du restaurant *</label>
-        <input type="text" id="restaurantName" required placeholder="Ex: Le Jardin des Saveurs" />
-      </div>
-
-      <div class="form-group">
-        <label for="email">Email (facultatif)</label>
-        <input type="email" id="email" placeholder="contact@monresto.ma" />
-      </div>
-
-      <button type="submit">Créer mon espace</button>
-      <div id="errorMessage" class="error hidden"></div>
-    </form>
-
-    <div id="result" class="result hidden">
-      <h2>Vos liens d’accès</h2>
-      <div class="link-box">
-        <strong>Lien client (à partager à vos clients) :</strong><br />
-        <a id="clientLink" target="_blank" rel="noopener">—</a>
-      </div>
-      <div class="link-box">
-        <strong>Lien staff (à garder privé) :</strong><br />
-        <a id="staffLink" target="_blank" rel="noopener">—</a>
-      </div>
-      <p style="margin-top: 16px; font-size: 0.9rem; color: #555;">
-        ⚠️ Enregistrez ces liens précieusement. Vous ne pourrez pas les récupérer ultérieurement.
-      </p>
+    <h1>Créer un Compte Restaurant</h1>
+    <div class="form-group">
+      <label for="restaurantName">Nom du restaurant *</label>
+      <input type="text" id="restaurantName" placeholder="Ex: Le Jardin Secret" required />
     </div>
+    <div class="form-group">
+      <label for="email">Email (optionnel)</label>
+      <input type="email" id="email" placeholder="contact@monresto.com" />
+    </div>
+    <button onclick="registerRestaurant()">Créer mon restaurant</button>
+    <div id="result"></div>
   </div>
 
   <script>
-    document.getElementById('registerForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
+    const BASE_URL = 'https://backend-menu-cloudinary-production.up.railway.app';
 
+    async function registerRestaurant() {
       const name = document.getElementById('restaurantName').value.trim();
-      const email = document.getElementById('email').value.trim() || null;
-      const errorDiv = document.getElementById('errorMessage');
+      const email = document.getElementById('email').value.trim();
       const resultDiv = document.getElementById('result');
 
-      errorDiv.classList.add('hidden');
-
       if (!name) {
-        errorDiv.textContent = "Le nom du restaurant est requis.";
-        errorDiv.classList.remove('hidden');
+        resultDiv.innerHTML = '<div class="error">Le nom du restaurant est requis.</div>';
         return;
       }
 
       try {
-        const res = await fetch('/api/register', {
+        const response = await fetch(`${BASE_URL}/api/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name, email })
         });
 
-        const data = await res.json();
+        const data = await response.json();
 
-        if (res.ok) {
-          document.getElementById('clientLink').textContent = data.client_url;
-          document.getElementById('clientLink').href = data.client_url;
-          document.getElementById('staffLink').textContent = data.staff_url;
-          document.getElementById('staffLink').href = data.staff_url;
-          resultDiv.classList.remove('hidden');
-          document.getElementById('registerForm').classList.add('hidden');
+        if (response.ok) {
+          resultDiv.innerHTML = `
+            <div class="result">
+              <h3>✅ Compte créé avec succès !</h3>
+              <p><strong>Menu client :</strong><br>
+                <a class="link" href="${data.client_url}" target="_blank">${data.client_url}</a>
+              </p>
+              <p><strong>Interface staff :</strong><br>
+                <a class="link" href="${data.staff_url}" target="_blank">${data.staff_url}</a>
+              </p>
+              <p>💡 Enregistrez ces liens — ils ne seront plus affichés après actualisation.</p>
+            </div>
+          `;
         } else {
-          errorDiv.textContent = data.error || "Une erreur est survenue.";
-          errorDiv.classList.remove('hidden');
+          resultDiv.innerHTML = `<div class="error">${data.error || 'Erreur inconnue.'}</div>`;
         }
       } catch (err) {
+        resultDiv.innerHTML = '<div class="error">Impossible de contacter le serveur. Vérifiez votre connexion.</div>';
         console.error(err);
-        errorDiv.textContent = "Impossible de contacter le serveur.";
-        errorDiv.classList.remove('hidden');
       }
-    });
+    }
   </script>
 </body>
 </html>
