@@ -1,14 +1,7 @@
 {
   "rewrites": [
-    { "source": "/(.*)", "destination": "/frontend/client.html" }
-  ],
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" }
-      ]
-    }
+    { "source": "/", "destination": "/client.html" },
+    { "source": "/dashboard.html", "destination": "/dash.html" },
+    { "source": "/register.html", "destination": "/regist.html" }
   ]
 }
