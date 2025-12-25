@@ -153,6 +153,31 @@
       color: white;
     }
 
+    .status-message {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #fff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      z-index: 1001;
+      text-align: center;
+      font-weight: 600;
+      display: none;
+    }
+
+    .status-message.pending {
+      border-left: 4px solid #ffc107;
+      color: #856404;
+    }
+
+    .status-message.confirmed {
+      border-left: 4px solid #4caf50;
+      color: #155724;
+    }
+
     .hidden { display: none; }
 
     @media (max-width: 768px) {
@@ -185,6 +210,8 @@
     Passer la commande
   </div>
 
+  <div class="status-message" id="statusMessage"></div>
+
   <script>
     const BASE_URL = 'https://backend-menu-cloudinary-production.up.railway.app';
     const urlParams = new URLSearchParams(window.location.search);
@@ -198,8 +225,10 @@
     const menuContainer = document.getElementById('menuContainer');
     const searchInput = document.getElementById('searchInput');
     const checkoutBar = document.getElementById('checkoutBar');
+    const statusMessage = document.getElementById('statusMessage');
     let allDishes = [];
     let cart = {}; // Objet : { dishId: quantity }
+    let currentOrderId = null;
 
     // Charger le menu
     fetch(`${BASE_URL}/api/menu/${token}`)
@@ -314,9 +343,19 @@
         });
 
         if (response.ok) {
-          alert('Commande envoyée avec succès !\nLe staff va la préparer.');
+          const data = await response.json();
+          currentOrderId = data.order_id;
+
+          // Affiche le message "En attente..."
+          showStatusMessage("En attente de confirmation par le staff...", "pending");
+
+          // Commence à poller le statut
+          startPollingStatus(currentOrderId);
+
+          // Réinitialise le panier
           cart = {};
           renderMenu(allDishes);
+
         } else {
           const errorData = await response.json().catch(() => ({}));
           alert(`Erreur : ${errorData.error || 'Impossible d’envoyer la commande.'}`);
@@ -326,6 +365,34 @@
         console.error(err);
       }
     });
+
+    function showStatusMessage(text, type) {
+      statusMessage.textContent = text;
+      statusMessage.className = `status-message ${type}`;
+      statusMessage.style.display = 'block';
+
+      // Disparaît après 5 secondes
+      setTimeout(() => {
+        statusMessage.style.display = 'none';
+      }, 5000);
+    }
+
+    function startPollingStatus(orderId) {
+      const interval = setInterval(async () => {
+        try {
+          const response = await fetch(`${BASE_URL}/api/order/${orderId}/status`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.status === 'confirmed') {
+              clearInterval(interval);
+              showStatusMessage("✅ Commande confirmée !", "confirmed");
+            }
+          }
+        } catch (err) {
+          console.error('Erreur lors du polling du statut.', err);
+        }
+      }, 3000); // Vérifie toutes les 3 secondes
+    }
   </script>
 </body>
 </html>
