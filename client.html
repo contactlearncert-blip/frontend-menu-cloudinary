@@ -17,59 +17,63 @@
     body {
       background-color: #f9f7f0;
       color: #2c2c2c;
-      padding: 16px;
+      padding: 0;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      background: white;
+      padding: 16px 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      color: #4a4a4a;
+      margin: 0;
+    }
+
+    .search-bar {
+      width: 300px;
+      max-width: 100%;
+    }
+
+    .search-bar input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 0.95rem;
+    }
+
+    .menu-container {
+      flex: 1;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: #777;
+      font-size: 1.1rem;
+    }
+
+    .menu-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 16px;
+      width: 100%;
       max-width: 1200px;
       margin: 0 auto;
     }
 
-    header {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-
-    h1 {
-      font-size: 1.8rem;
-      color: #2e5a4d;
-    }
-
-    .filters {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 20px;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      padding-bottom: 8px;
-    }
-
-    .filters::-webkit-scrollbar { display: none; }
-    .filters { -ms-overflow-style: none; scrollbar-width: none; }
-
-    .filter-btn {
-      flex: 0 0 auto;
-      padding: 8px 16px;
-      background: #e5d9c5;
-      border: none;
-      border-radius: 20px;
-      font-size: 0.95rem;
-      color: #4a4a4a;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background 0.2s;
-    }
-
-    .filter-btn.active, .filter-btn:hover {
-      background: #c8b69c;
-    }
-
-    .menu {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 16px;
-    }
-
     .menu-item {
-      flex: 1 1 calc(50% - 8px);
-      min-width: 140px;
       background: white;
       border-radius: 12px;
       overflow: hidden;
@@ -77,12 +81,6 @@
       padding: 12px;
       display: flex;
       flex-direction: column;
-    }
-
-    @media (min-width: 768px) {
-      .menu-item {
-        flex: 1 1 calc(33.333% - 12px);
-      }
     }
 
     .menu-item img {
@@ -124,65 +122,52 @@
       align-self: flex-start;
     }
 
-    .empty-message {
+    .checkout-bar {
+      background: #8d7b6e;
+      color: white;
+      padding: 12px 0;
       text-align: center;
-      padding: 40px;
-      color: #777;
-      grid-column: 1 / -1;
+      font-weight: 600;
+      font-size: 1.1rem;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      cursor: pointer;
     }
 
     .hidden { display: none; }
 
-    .checkout-btn {
-      background: #2e5a4d;
-      color: white;
-      padding: 12px 24px;
-      border: none;
-      border-radius: 8px;
-      font-size: 1.1rem;
-      font-weight: 600;
-      cursor: pointer;
-      margin-top: 24px;
-      display: block;
-      width: 100%;
-      max-width: 300px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-
-    .cart-badge {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      background: #2e5a4d;
-      color: white;
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    @media (max-width: 768px) {
+      .header {
+        flex-direction: column;
+        gap: 12px;
+      }
+      .search-bar {
+        width: 100%;
+      }
+      .menu-grid {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Notre Menu</h1>
-  </header>
-
-  <div class="filters" id="filtersContainer">
-    <button class="filter-btn active" data-category="All">Tous</button>
+  <div class="header">
+    <h1>Menu du Restaurant</h1>
+    <div class="search-bar">
+      <input type="text" id="searchInput" placeholder="Rechercher un plat ou une description..." />
+    </div>
   </div>
 
-  <div class="menu" id="menuContainer">
-    <div class="empty-message">Chargement du menu...</div>
+  <div class="menu-container" id="menuContainer">
+    Chargement du menu...
   </div>
 
-  <button class="checkout-btn" onclick="sendOrder()">✅ Valider ma commande</button>
-
-  <div class="cart-badge" id="cartBadge">0</div>
+  <div class="checkout-bar" id="checkoutBar">
+    Passer la commande
+  </div>
 
   <script>
     const BASE_URL = 'https://backend-menu-cloudinary-production.up.railway.app';
@@ -190,44 +175,36 @@
     const token = urlParams.get('token');
 
     if (!token) {
-      document.getElementById('menuContainer').innerHTML = '<p class="empty-message" style="color:red;">Lien invalide.</p>';
+      document.getElementById('menuContainer').innerHTML = '<p style="color:red;">Lien invalide.</p>';
       throw new Error('Token manquant');
     }
 
     const menuContainer = document.getElementById('menuContainer');
-    const filtersContainer = document.getElementById('filtersContainer');
-    const cartBadge = document.getElementById('cartBadge');
+    const searchInput = document.getElementById('searchInput');
+    const checkoutBar = document.getElementById('checkoutBar');
     let allDishes = [];
-    let categories = new Set();
     let cart = [];
 
+    // Charger le menu
     fetch(`${BASE_URL}/api/menu/${token}`)
       .then(res => res.ok ? res.json() : Promise.reject())
       .then(dishes => {
         allDishes = dishes;
-        dishes.forEach(d => categories.add(d.category));
-
-        categories.forEach(cat => {
-          const btn = document.createElement('button');
-          btn.className = 'filter-btn';
-          btn.textContent = cat;
-          btn.dataset.category = cat;
-          filtersContainer.appendChild(btn);
-        });
-
         renderMenu(dishes);
       })
       .catch(() => {
-        menuContainer.innerHTML = '<p class="empty-message" style="color:red;">Erreur de chargement.</p>';
+        menuContainer.innerHTML = '<p style="color:red;">Erreur de chargement du menu.</p>';
       });
 
     function renderMenu(items) {
       if (items.length === 0) {
-        menuContainer.innerHTML = '<p class="empty-message">Aucun plat disponible.</p>';
+        menuContainer.innerHTML = '<p>Aucun plat disponible.</p>';
         return;
       }
 
-      menuContainer.innerHTML = '';
+      menuContainer.innerHTML = `<div class="menu-grid"></div>`;
+      const grid = menuContainer.querySelector('.menu-grid');
+
       items.forEach(item => {
         const div = document.createElement('div');
         div.className = 'menu-item';
@@ -238,21 +215,17 @@
           <div class="price">${item.price}</div>
           <button class="add-btn" data-id="${item.id}">+</button>
         `;
-        menuContainer.appendChild(div);
+        grid.appendChild(div);
       });
     }
 
-    filtersContainer.addEventListener('click', (e) => {
-      if (!e.target.classList.contains('filter-btn')) return;
-
-      document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-      e.target.classList.add('active');
-
-      const category = e.target.dataset.category;
-      const filtered = category === 'All'
-        ? allDishes
-        : allDishes.filter(d => d.category === category);
-
+    // Recherche
+    searchInput.addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase();
+      const filtered = allDishes.filter(d =>
+        d.name.toLowerCase().includes(term) ||
+        (d.description && d.description.toLowerCase().includes(term))
+      );
       renderMenu(filtered);
     });
 
@@ -263,18 +236,13 @@
         const item = allDishes.find(d => d.id === id);
         if (item) {
           cart.push(item);
-          updateCartBadge();
           alert(`✅ ${item.name} ajouté au panier !`);
         }
       }
     });
 
-    function updateCartBadge() {
-      cartBadge.textContent = cart.length;
-      cartBadge.style.display = cart.length > 0 ? 'flex' : 'none';
-    }
-
-    async function sendOrder() {
+    // Valider la commande
+    checkoutBar.addEventListener('click', async () => {
       if (cart.length === 0) {
         alert("Votre panier est vide.");
         return;
@@ -294,7 +262,6 @@
         if (response.ok) {
           alert('Commande envoyée avec succès !\nLe staff va la préparer.');
           cart = [];
-          updateCartBadge();
         } else {
           const errorData = await response.json().catch(() => ({}));
           alert(`Erreur : ${errorData.error || 'Impossible d’envoyer la commande.'}`);
@@ -303,9 +270,7 @@
         alert('Impossible de contacter le serveur. Vérifiez votre connexion.');
         console.error(err);
       }
-    }
-
-    updateCartBadge();
+    });
   </script>
 </body>
 </html>
