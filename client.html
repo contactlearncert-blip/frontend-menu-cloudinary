@@ -153,32 +153,29 @@
       color: white;
     }
 
-    .status-message {
+    .status-banner {
       position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
+      top: 0;
+      left: 0;
+      right: 0;
       background: #fff;
-      padding: 12px 24px;
-      border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      z-index: 1001;
+      padding: 12px;
       text-align: center;
       font-weight: 600;
+      z-index: 1001;
+      box-shadow: 0 0 8px rgba(0,0,0,0.1);
       display: none;
     }
 
-    .status-message.pending {
-      border-left: 4px solid #ffc107;
+    .status-banner.pending {
+      border-bottom: 3px solid #ffc107;
       color: #856404;
     }
 
-    .status-message.confirmed {
-      border-left: 4px solid #4caf50;
+    .status-banner.confirmed {
+      border-bottom: 3px solid #4caf50;
       color: #155724;
     }
-
-    .hidden { display: none; }
 
     @media (max-width: 768px) {
       .header {
@@ -195,6 +192,8 @@
   </style>
 </head>
 <body>
+  <div class="status-banner" id="statusBanner"></div>
+
   <div class="header">
     <h1>Menu du Restaurant</h1>
     <div class="search-bar">
@@ -210,8 +209,6 @@
     Passer la commande
   </div>
 
-  <div class="status-message" id="statusMessage"></div>
-
   <script>
     const BASE_URL = 'https://backend-menu-cloudinary-production.up.railway.app';
     const urlParams = new URLSearchParams(window.location.search);
@@ -225,10 +222,11 @@
     const menuContainer = document.getElementById('menuContainer');
     const searchInput = document.getElementById('searchInput');
     const checkoutBar = document.getElementById('checkoutBar');
-    const statusMessage = document.getElementById('statusMessage');
+    const statusBanner = document.getElementById('statusBanner');
     let allDishes = [];
-    let cart = {}; // Objet : { dishId: quantity }
+    let cart = {}; // { dishId: quantity }
     let currentOrderId = null;
+    let pollingInterval = null;
 
     // Charger le menu
     fetch(`${BASE_URL}/api/menu/${token}`)
@@ -283,7 +281,7 @@
       renderMenu(filtered);
     });
 
-    // Gestion des clics sur les boutons +/-
+    // Gestion des clics
     document.addEventListener('click', (e) => {
       if (e.target.classList.contains('plus')) {
         const id = parseInt(e.target.dataset.id);
@@ -329,7 +327,6 @@
       }
 
       const tableNumber = prompt("Numéro de table (facultatif) :") || "À emporter";
-
       const items = Object.keys(cart).map(id => ({
         id: parseInt(id),
         quantity: cart[id]
@@ -346,8 +343,10 @@
           const data = await response.json();
           currentOrderId = data.order_id;
 
-          // Affiche le message "En attente..."
-          showStatusMessage("En attente de confirmation par le staff...", "pending");
+          // Affiche le message PERSISTANT
+          statusBanner.textContent = "Votre commande est en attente de confirmation par le staff.";
+          statusBanner.className = "status-banner pending";
+          statusBanner.style.display = "block";
 
           // Commence à poller le statut
           startPollingStatus(currentOrderId);
@@ -366,32 +365,22 @@
       }
     });
 
-    function showStatusMessage(text, type) {
-      statusMessage.textContent = text;
-      statusMessage.className = `status-message ${type}`;
-      statusMessage.style.display = 'block';
-
-      // Disparaît après 5 secondes
-      setTimeout(() => {
-        statusMessage.style.display = 'none';
-      }, 5000);
-    }
-
     function startPollingStatus(orderId) {
-      const interval = setInterval(async () => {
+      pollingInterval = setInterval(async () => {
         try {
           const response = await fetch(`${BASE_URL}/api/order/${orderId}/status`);
           if (response.ok) {
             const data = await response.json();
             if (data.status === 'confirmed') {
-              clearInterval(interval);
-              showStatusMessage("✅ Commande confirmée !", "confirmed");
+              clearInterval(pollingInterval);
+              statusBanner.textContent = "✅ Commande confirmée ! Prête à être servie.";
+              statusBanner.className = "status-banner confirmed";
             }
           }
         } catch (err) {
           console.error('Erreur lors du polling du statut.', err);
         }
-      }, 3000); // Vérifie toutes les 3 secondes
+      }, 3000);
     }
   </script>
 </body>

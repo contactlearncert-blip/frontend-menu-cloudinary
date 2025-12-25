@@ -19,37 +19,74 @@
       color: #2c2c2c;
       max-width: 1200px;
       margin: 0 auto;
-      padding: 16px;
+      padding: 20px;
       display: flex;
       flex-direction: column;
       min-height: 100vh;
     }
 
     header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      text-align: center;
       margin-bottom: 20px;
-      flex-wrap: wrap;
-      gap: 12px;
     }
 
     h1 {
-      font-size: 1.7rem;
-      color: #2e5a4d;
+      font-size: 1.8rem;
+      color: #4a4a4a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
     }
 
-    .stats {
-      background: #e5d9c5;
-      padding: 12px 20px;
+    .stats-container {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .stat-card {
+      background: white;
+      padding: 16px;
       border-radius: 12px;
-      font-weight: 500;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      text-align: center;
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .stat-card h3 {
+      font-size: 0.95rem;
+      color: #666;
+      margin-bottom: 8px;
+    }
+
+    .stat-card .value {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #8d7b6e;
+    }
+
+    .action-btn {
+      background: #2e5a4d;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-block;
+      margin-left: 10px;
     }
 
     .tabs {
       display: flex;
       gap: 12px;
       margin-bottom: 20px;
+      justify-content: center;
     }
 
     .tab-btn {
@@ -59,6 +96,7 @@
       border-radius: 20px;
       cursor: pointer;
       font-weight: 500;
+      transition: background 0.2s;
     }
 
     .tab-btn.active, .tab-btn:hover {
@@ -77,7 +115,7 @@
     .orders-container {
       flex: 1;
       overflow-y: auto;
-      max-height: calc(100vh - 240px);
+      max-height: calc(100vh - 300px);
     }
 
     .order {
@@ -161,26 +199,53 @@
         width: 100%;
         border-radius: 0;
       }
+      .stats-container {
+        flex-direction: column;
+      }
+      .stat-card {
+        min-width: 100%;
+      }
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>Gestion du Restaurant</h1>
-    <div class="stats" id="statsBox">Chargement...</div>
+    <h1>📋 Dashboard Staff</h1>
   </header>
 
-  <div class="tabs">
-    <button class="tab-btn active" data-tab="orders">Commandes</button>
-    <button class="tab-btn" data-tab="menu">Menu</button>
+  <div class="stats-container">
+    <div class="stat-card">
+      <h3>Chiffre d'affaires aujourd'hui</h3>
+      <div class="value" id="todaySales">0 MAD</div>
+    </div>
+    <div class="stat-card">
+      <h3>Commandes validées</h3>
+      <div class="value" id="confirmedOrders">0</div>
+    </div>
+    <button class="action-btn" onclick="downloadSalesFile()">📁 Fichiers vente (un) .txt</button>
   </div>
 
-  <div id="ordersTab">
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="pending">En Attente</button>
+    <button class="tab-btn" data-tab="confirmed">Validées</button>
+    <button class="tab-btn" data-tab="menu">Ajouter/Supprimer</button>
+  </div>
+
+  <div id="pendingTab">
     <div class="search-bar">
       <input type="text" id="searchInput" placeholder="Rechercher une commande..." />
     </div>
     <div class="orders-container" id="pendingOrders">
-      <p>Chargement...</p>
+      <p style="text-align:center; color:#777;">Aucune commande.</p>
+    </div>
+  </div>
+
+  <div id="confirmedTab" class="hidden">
+    <div class="search-bar">
+      <input type="text" id="searchInputConfirmed" placeholder="Rechercher une commande..." />
+    </div>
+    <div class="orders-container" id="confirmedOrdersList">
+      <p style="text-align:center; color:#777;">Aucune commande validée.</p>
     </div>
   </div>
 
@@ -216,9 +281,11 @@
       btn.addEventListener('click', () => {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        document.getElementById('ordersTab').classList.toggle('hidden', btn.dataset.tab !== 'orders');
+        document.getElementById('pendingTab').classList.toggle('hidden', btn.dataset.tab !== 'pending');
+        document.getElementById('confirmedTab').classList.toggle('hidden', btn.dataset.tab !== 'confirmed');
         document.getElementById('menuTab').classList.toggle('hidden', btn.dataset.tab !== 'menu');
-        if (btn.dataset.tab === 'orders') loadAllOrders();
+        if (btn.dataset.tab === 'pending') loadPendingOrders();
+        if (btn.dataset.tab === 'confirmed') loadConfirmedOrders();
       });
     });
 
@@ -226,27 +293,38 @@
     fetch(`${BASE_URL}/api/stats/today/${token}`)
       .then(r => r.json())
       .then(data => {
-        document.getElementById('statsBox').textContent = 
-          `Aujourd’hui : ${data.orders_count} commandes • ${data.total_sales} MAD`;
+        document.getElementById('todaySales').textContent = `${data.total_sales} MAD`;
+        document.getElementById('confirmedOrders').textContent = data.orders_count;
       })
       .catch(console.error);
 
-    let allOrders = [];
+    let allPendingOrders = [];
+    let allConfirmedOrders = [];
 
-    function loadAllOrders() {
+    function loadPendingOrders() {
       fetch(`${BASE_URL}/api/orders/pending/${token}`)
         .then(r => r.json())
         .then(orders => {
-          allOrders = orders;
-          renderOrders(orders);
+          allPendingOrders = orders;
+          renderOrders(orders, 'pending');
         })
         .catch(console.error);
     }
 
-    function renderOrders(orders) {
-      const container = document.getElementById('pendingOrders');
+    function loadConfirmedOrders() {
+      fetch(`${BASE_URL}/api/orders/confirmed/${token}`)
+        .then(r => r.json())
+        .then(orders => {
+          allConfirmedOrders = orders;
+          renderOrders(orders, 'confirmed');
+        })
+        .catch(console.error);
+    }
+
+    function renderOrders(orders, tab) {
+      const container = document.getElementById(tab === 'pending' ? 'pendingOrders' : 'confirmedOrdersList');
       if (orders.length === 0) {
-        container.innerHTML = '<p>Aucune commande en attente.</p>';
+        container.innerHTML = '<p style="text-align:center; color:#777;">Aucune commande.</p>';
         return;
       }
       container.innerHTML = orders.map(o => `
@@ -259,7 +337,7 @@
             ${o.items.map(i => `<div class="order-item">• ${i.dish.name} x${i.quantity}</div>`).join('')}
           </div>
           <div class="actions">
-            <button class="btn btn-confirm" onclick="confirmOrder(${o.id})">Valider</button>
+            <button class="btn btn-confirm" onclick="confirmOrder(${o.id})">${tab === 'pending' ? 'Valider' : 'Annuler'}</button>
             <button class="btn btn-delete" onclick="deleteOrder(${o.id})">Supprimer</button>
           </div>
         </div>
@@ -268,24 +346,40 @@
 
     document.getElementById('searchInput').addEventListener('input', (e) => {
       const term = e.target.value.toLowerCase();
-      const filtered = allOrders.filter(o =>
+      const filtered = allPendingOrders.filter(o =>
         o.id.toString().includes(term) ||
         (o.table_number && o.table_number.toLowerCase().includes(term)) ||
         o.items.some(i => i.dish.name.toLowerCase().includes(term))
       );
-      renderOrders(filtered);
+      renderOrders(filtered, 'pending');
+    });
+
+    document.getElementById('searchInputConfirmed').addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase();
+      const filtered = allConfirmedOrders.filter(o =>
+        o.id.toString().includes(term) ||
+        (o.table_number && o.table_number.toLowerCase().includes(term)) ||
+        o.items.some(i => i.dish.name.toLowerCase().includes(term))
+      );
+      renderOrders(filtered, 'confirmed');
     });
 
     function confirmOrder(id) {
       fetch(`${BASE_URL}/api/order/${id}/confirm`, { method: 'POST' })
-        .then(() => loadAllOrders())
+        .then(() => {
+          loadPendingOrders();
+          loadConfirmedOrders();
+        })
         .catch(console.error);
     }
 
     function deleteOrder(id) {
       if (confirm("Supprimer cette commande ?")) {
         fetch(`${BASE_URL}/api/order/${id}`, { method: 'DELETE' })
-          .then(() => loadAllOrders())
+          .then(() => {
+            loadPendingOrders();
+            loadConfirmedOrders();
+          })
           .catch(console.error);
       }
     }
@@ -314,7 +408,6 @@
         for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
         const base64 = btoa(binary);
         const mimeType = file.type || 'image/jpeg';
-        // ✅ CORRIGÉ : ajout de "data:" au début → format valide pour Cloudinary
         imageData = `data:${mimeType};base64,${base64}`;
       }
 
@@ -344,7 +437,29 @@
       .catch(console.error);
     }
 
-    loadAllOrders();
+    function downloadSalesFile() {
+      fetch(`${BASE_URL}/api/orders/confirmed/${token}`)
+        .then(r => r.json())
+        .then(orders => {
+          const content = orders.map(o => {
+            const total = o.items.reduce((sum, i) => sum + i.dish.price * i.quantity, 0);
+            return `Commande #${o.id} - ${o.table_number || 'À emporter'}\n${o.items.map(i => `  • ${i.dish.name} x${i.quantity}`).join('\n')}\nTotal: ${total} MAD\n---`;
+          }).join('\n\n');
+
+          const blob = new Blob([content], { type: 'text/plain' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `ventes_${new Date().toISOString().split('T')[0]}.txt`;
+          a.click();
+          URL.revokeObjectURL(url);
+        })
+        .catch(console.error);
+    }
+
+    // Chargement initial
+    loadPendingOrders();
+    loadConfirmedOrders();
   </script>
 </body>
 </html>
