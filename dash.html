@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name=" viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Staff – Gestion des Commandes</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
@@ -203,7 +203,6 @@
   </div>
 
   <script>
-    // ✅ CORRIGÉ : URL sans espaces
     const BASE_URL = 'https://backend-menu-cloudinary-production.up.railway.app';
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
@@ -315,10 +314,10 @@
         for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
         const base64 = btoa(binary);
         const mimeType = file.type || 'image/jpeg';
-        imageData = `${mimeType};base64,${base64}`;
+        // ✅ CORRIGÉ : ajout de "data:" au début → format valide pour Cloudinary
+        imageData = `data:${mimeType};base64,${base64}`;
       }
 
-      // ✅ CORRIGÉ : syntaxe objet JavaScript valide
       fetch(`${BASE_URL}/api/menu/add/${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -327,7 +326,7 @@
           description: desc,
           price,
           category,
-          image: imageData
+          image_data: imageData
         })
       })
       .then(res => {
