@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inscription – Gestion de Restaurant</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      background-color: #f9f7f0;
+      color: #2c2c2c;
+      padding: 20px;
+      max-width: 600px;
+      margin: 40px auto;
+    }
+
+    .container {
+      background: white;
+      padding: 32px;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 24px;
+      color: #2e5a4d;
+      font-size: 1.8rem;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: #444;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #2e5a4d;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #254a3e;
+    }
+
+    .result {
+      margin-top: 24px;
+      padding: 20px;
+      background: #e5d9c5;
+      border-radius: 12px;
+      display: none;
+    }
+
+    .result h2 {
+      margin-bottom: 16px;
+      color: #2e5a4d;
+    }
+
+    .link-box {
+      margin: 12px 0;
+    }
+
+    .link-box a {
+      color: #2e5a4d;
+      text-decoration: none;
+      word-break: break-all;
+    }
+
+    .link-box a:hover {
+      text-decoration: underline;
+    }
+
+    .error {
+      color: #d32f2f;
+      margin-top: 12px;
+      font-weight: 500;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Inscrivez votre restaurant</h1>
+
+    <form id="registerForm">
+      <div class="form-group">
+        <label for="restaurantName">Nom du restaurant *</label>
+        <input type="text" id="restaurantName" required placeholder="Ex: Le Jardin des Saveurs" />
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email (facultatif)</label>
+        <input type="email" id="email" placeholder="contact@monresto.ma" />
+      </div>
+
+      <button type="submit">Créer mon espace</button>
+      <div id="errorMessage" class="error hidden"></div>
+    </form>
+
+    <div id="result" class="result hidden">
+      <h2>Vos liens d’accès</h2>
+      <div class="link-box">
+        <strong>Lien client (à partager à vos clients) :</strong><br />
+        <a id="clientLink" target="_blank" rel="noopener">—</a>
+      </div>
+      <div class="link-box">
+        <strong>Lien staff (à garder privé) :</strong><br />
+        <a id="staffLink" target="_blank" rel="noopener">—</a>
+      </div>
+      <p style="margin-top: 16px; font-size: 0.9rem; color: #555;">
+        ⚠️ Enregistrez ces liens précieusement. Vous ne pourrez pas les récupérer ultérieurement.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const name = document.getElementById('restaurantName').value.trim();
+      const email = document.getElementById('email').value.trim() || null;
+      const errorDiv = document.getElementById('errorMessage');
+      const resultDiv = document.getElementById('result');
+
+      errorDiv.classList.add('hidden');
+
+      if (!name) {
+        errorDiv.textContent = "Le nom du restaurant est requis.";
+        errorDiv.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          document.getElementById('clientLink').textContent = data.client_url;
+          document.getElementById('clientLink').href = data.client_url;
+          document.getElementById('staffLink').textContent = data.staff_url;
+          document.getElementById('staffLink').href = data.staff_url;
+          resultDiv.classList.remove('hidden');
+          document.getElementById('registerForm').classList.add('hidden');
+        } else {
+          errorDiv.textContent = data.error || "Une erreur est survenue.";
+          errorDiv.classList.remove('hidden');
+        }
+      } catch (err) {
+        console.error(err);
+        errorDiv.textContent = "Impossible de contacter le serveur.";
+        errorDiv.classList.remove('hidden');
+      }
+    });
+  </script>
+</body>
+</html>

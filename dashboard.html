@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Staff – Gestion des Commandes</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Inter', sans-serif;
+    }
+
+    body {
+      background-color: #f9f7f0;
+      color: #2c2c2c;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    h1 {
+      font-size: 1.7rem;
+      color: #2e5a4d;
+    }
+
+    .stats {
+      background: #e5d9c5;
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-weight: 500;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .tab-btn {
+      padding: 8px 20px;
+      background: #e5d9c5;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .tab-btn.active, .tab-btn:hover {
+      background: #c8b69c;
+    }
+
+    .search-bar input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 1rem;
+      margin-bottom: 16px;
+    }
+
+    .orders-container {
+      flex: 1;
+      overflow-y: auto;
+      max-height: calc(100vh - 240px);
+    }
+
+    .order {
+      background: white;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+
+    .order-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+
+    .order-items { margin: 12px 0; padding-left: 16px; }
+    .order-item { margin-bottom: 6px; font-size: 0.95rem; }
+
+    .actions { display: flex; gap: 10px; margin-top: 12px; }
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .btn-confirm { background: #4caf50; color: white; }
+    .btn-delete { background: #f44336; color: white; }
+
+    .menu-inputs {
+      margin-top: 20px;
+    }
+    .menu-inputs input,
+    .menu-inputs textarea,
+    .menu-inputs select {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+
+    .add-btn {
+      background: #2e5a4d;
+      color: white;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      width: 100%;
+    }
+
+    .file-input { margin-bottom: 12px; }
+
+    .hidden { display: none; }
+
+    .validation-bar {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #2e5a4d;
+      color: white;
+      padding: 14px 16px;
+      text-align: center;
+      font-weight: 600;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+      max-width: 1200px;
+      width: calc(100% - 32px);
+      border-radius: 12px 12px 0 0;
+    }
+
+    @media (max-width: 768px) {
+      .validation-bar {
+        position: sticky;
+        bottom: 0;
+        left: 0;
+        transform: none;
+        width: 100%;
+        border-radius: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Gestion du Restaurant</h1>
+    <div class="stats" id="statsBox">Chargement...</div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="orders">Commandes</button>
+    <button class="tab-btn" data-tab="menu">Menu</button>
+  </div>
+
+  <div id="ordersTab">
+    <div class="search-bar">
+      <input type="text" id="searchInput" placeholder="Rechercher une commande..." />
+    </div>
+    <div class="orders-container" id="pendingOrders">
+      <p>Chargement...</p>
+    </div>
+  </div>
+
+  <div id="menuTab" class="hidden">
+    <div class="menu-inputs">
+      <input type="text" id="dishName" placeholder="Nom du plat" />
+      <textarea id="dishDesc" placeholder="Description"></textarea>
+      <input type="text" id="dishPrice" placeholder="Prix (ex: 45 MAD)" />
+      <input type="text" id="dishCategory" placeholder="Catégorie (ex: Plats principaux)" />
+      <div class="file-input">
+        <label>Image (facultatif)</label>
+        <input type="file" id="dishImage" accept="image/*" />
+      </div>
+      <button class="add-btn" onclick="addDish()">Ajouter au menu</button>
+    </div>
+  </div>
+
+  <div class="validation-bar">
+    Barre de validation – toujours visible
+  </div>
+
+  <script>
+    const BASE_URL = 'https://backend-menu-cloudinary-production.up.railway.app';
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+
+    if (!token) {
+      document.body.innerHTML = '<p style="text-align:center;margin-top:40px;color:red;">Accès refusé.</p>';
+    }
+
+    // Onglets
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('ordersTab').classList.toggle('hidden', btn.dataset.tab !== 'orders');
+        document.getElementById('menuTab').classList.toggle('hidden', btn.dataset.tab !== 'menu');
+        if (btn.dataset.tab === 'orders') loadAllOrders();
+      });
+    });
+
+    // Stats
+    fetch(`${BASE_URL}/api/stats/today/${token}`)
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('statsBox').textContent = 
+          `Aujourd’hui : ${data.orders_count} commandes • ${data.total_sales} MAD`;
+      })
+      .catch(console.error);
+
+    let allOrders = [];
+
+    function loadAllOrders() {
+      fetch(`${BASE_URL}/api/orders/pending/${token}`)
+        .then(r => r.json())
+        .then(orders => {
+          allOrders = orders;
+          renderOrders(orders);
+        });
+    }
+
+    function renderOrders(orders) {
+      const container = document.getElementById('pendingOrders');
+      if (orders.length === 0) {
+        container.innerHTML = '<p>Aucune commande en attente.</p>';
+        return;
+      }
+      container.innerHTML = orders.map(o => `
+        <div class="order" data-id="${o.id}">
+          <div class="order-header">
+            <span>Commande #${o.id} • ${o.table_number || 'À emporter'}</span>
+            <span>${new Date(o.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+          </div>
+          <div class="order-items">
+            ${o.items.map(i => `<div class="order-item">• ${i.dish.name} x${i.quantity}</div>`).join('')}
+          </div>
+          <div class="actions">
+            <button class="btn btn-confirm" onclick="confirmOrder(${o.id})">Valider</button>
+            <button class="btn btn-delete" onclick="deleteOrder(${o.id})">Supprimer</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      const term = e.target.value.toLowerCase();
+      const filtered = allOrders.filter(o =>
+        o.id.toString().includes(term) ||
+        (o.table_number && o.table_number.toLowerCase().includes(term)) ||
+        o.items.some(i => i.dish.name.toLowerCase().includes(term))
+      );
+      renderOrders(filtered);
+    });
+
+    function confirmOrder(id) {
+      fetch(`${BASE_URL}/api/order/${id}/confirm`, { method: 'POST' })
+        .then(() => loadAllOrders())
+        .catch(console.error);
+    }
+
+    function deleteOrder(id) {
+      if (confirm("Supprimer cette commande ?")) {
+        fetch(`${BASE_URL}/api/order/${id}`, { method: 'DELETE' })
+          .then(() => loadAllOrders())
+          .catch(console.error);
+      }
+    }
+
+    async function addDish() {
+      const name = document.getElementById('dishName').value.trim();
+      const desc = document.getElementById('dishDesc').value.trim();
+      const price = document.getElementById('dishPrice').value.trim();
+      const category = document.getElementById('dishCategory').value.trim();
+      const file = document.getElementById('dishImage').files[0];
+
+      if (!name || !desc || !price || !category) {
+        alert("Tous les champs sont requis.");
+        return;
+      }
+
+      let imageData = null;
+      if (file) {
+        const reader = new FileReader();
+        const arrayBuffer = await new Promise(resolve => {
+          reader.onload = () => resolve(reader.result);
+          reader.readAsArrayBuffer(file);
+        });
+        const bytes = new Uint8Array(arrayBuffer);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        const base64 = btoa(binary);
+        const mimeType = file.type || 'image/jpeg';
+        imageData = `data:${mimeType};base64,${base64}`;
+      }
+
+      fetch(`${BASE_URL}/api/menu/add/${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, description: desc, price, category, image_data: imageData })
+      })
+      .then(res => {
+        if (res.ok) {
+          alert('Plat ajouté !');
+          ['dishName','dishDesc','dishPrice','dishCategory'].forEach(id => {
+            document.getElementById(id).value = '';
+          });
+          document.getElementById('dishImage').value = '';
+        } else {
+          alert('Erreur lors de l’ajout.');
+        }
+      })
+      .catch(console.error);
+    }
+
+    loadAllOrders();
+  </script>
+</body>
+</html>
