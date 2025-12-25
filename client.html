@@ -110,16 +110,27 @@
       font-size: 1.05rem;
     }
 
-    .add-btn {
+    .quantity-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .qty-btn {
       background: #2e5a4d;
       color: white;
       border: none;
-      border-radius: 6px;
+      border-radius: 4px;
       padding: 4px 8px;
-      font-size: 0.9rem;
       cursor: pointer;
-      margin-top: 8px;
-      align-self: flex-start;
+      font-size: 0.9rem;
+    }
+
+    .qty-display {
+      font-weight: 600;
+      min-width: 20px;
+      text-align: center;
     }
 
     .checkout-bar {
@@ -135,6 +146,11 @@
       right: 0;
       z-index: 1000;
       cursor: pointer;
+    }
+
+    .checkout-bar.active {
+      background: #2e5a4d;
+      color: white;
     }
 
     .hidden { display: none; }
@@ -183,7 +199,7 @@
     const searchInput = document.getElementById('searchInput');
     const checkoutBar = document.getElementById('checkoutBar');
     let allDishes = [];
-    let cart = [];
+    let cart = {}; // Objet : { dishId: quantity }
 
     // Charger le menu
     fetch(`${BASE_URL}/api/menu/${token}`)
@@ -208,15 +224,24 @@
       items.forEach(item => {
         const div = document.createElement('div');
         div.className = 'menu-item';
+
+        const qty = cart[item.id] || 0;
+
         div.innerHTML = `
           ${item.image_url ? `<img src="${item.image_url}" onerror="this.style.display='none'">` : ''}
           <h3>${item.name}</h3>
           <p>${item.description || ''}</p>
           <div class="price">${item.price}</div>
-          <button class="add-btn" data-id="${item.id}">+</button>
+          <div class="quantity-controls">
+            <button class="qty-btn minus" data-id="${item.id}">−</button>
+            <span class="qty-display">${qty}</span>
+            <button class="qty-btn plus" data-id="${item.id}">+</button>
+          </div>
         `;
         grid.appendChild(div);
       });
+
+      updateCheckoutButton();
     }
 
     // Recherche
@@ -229,28 +254,57 @@
       renderMenu(filtered);
     });
 
-    // Gestion du panier
+    // Gestion des clics sur les boutons +/-
     document.addEventListener('click', (e) => {
-      if (e.target.classList.contains('add-btn')) {
+      if (e.target.classList.contains('plus')) {
         const id = parseInt(e.target.dataset.id);
-        const item = allDishes.find(d => d.id === id);
-        if (item) {
-          cart.push(item);
-          alert(`✅ ${item.name} ajouté au panier !`);
+        cart[id] = (cart[id] || 0) + 1;
+        updateQuantityDisplay(id);
+        updateCheckoutButton();
+      } else if (e.target.classList.contains('minus')) {
+        const id = parseInt(e.target.dataset.id);
+        if (cart[id] > 0) {
+          cart[id]--;
+          if (cart[id] === 0) delete cart[id];
+          updateQuantityDisplay(id);
+          updateCheckoutButton();
         }
       }
     });
 
+    function updateQuantityDisplay(id) {
+      const btn = document.querySelector(`[data-id="${id}"]`);
+      if (btn) {
+        const display = btn.parentElement.querySelector('.qty-display');
+        if (display) {
+          display.textContent = cart[id] || 0;
+        }
+      }
+    }
+
+    function updateCheckoutButton() {
+      if (Object.keys(cart).length > 0) {
+        checkoutBar.classList.add('active');
+        checkoutBar.style.cursor = 'pointer';
+      } else {
+        checkoutBar.classList.remove('active');
+        checkoutBar.style.cursor = 'default';
+      }
+    }
+
     // Valider la commande
     checkoutBar.addEventListener('click', async () => {
-      if (cart.length === 0) {
+      if (Object.keys(cart).length === 0) {
         alert("Votre panier est vide.");
         return;
       }
 
       const tableNumber = prompt("Numéro de table (facultatif) :") || "À emporter";
 
-      const items = cart.map(item => ({ id: item.id }));
+      const items = Object.keys(cart).map(id => ({
+        id: parseInt(id),
+        quantity: cart[id]
+      }));
 
       try {
         const response = await fetch(`${BASE_URL}/api/order/${token}`, {
@@ -261,7 +315,8 @@
 
         if (response.ok) {
           alert('Commande envoyée avec succès !\nLe staff va la préparer.');
-          cart = [];
+          cart = {};
+          renderMenu(allDishes);
         } else {
           const errorData = await response.json().catch(() => ({}));
           alert(`Erreur : ${errorData.error || 'Impossible d’envoyer la commande.'}`);
