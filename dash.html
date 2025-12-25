@@ -170,7 +170,7 @@
       width: 100%;
     }
 
-    .file-input { margin-bottom: 12px; }
+    .url-input { margin-bottom: 12px; }
 
     .hidden { display: none; }
 
@@ -270,9 +270,9 @@
       <textarea id="dishDesc" placeholder="Description"></textarea>
       <input type="text" id="dishPrice" placeholder="Prix (ex: 45 MAD)" />
       <input type="text" id="dishCategory" placeholder="Catégorie (ex: Plats principaux)" />
-      <div class="file-input">
-        <label>Image (facultatif)</label>
-        <input type="file" id="dishImage" accept="image/*" />
+      <div class="url-input">
+        <label>URL de l'image (facultatif)</label>
+        <input type="text" id="dishImageUrl" placeholder="https://res.cloudinary.com/..." />
       </div>
       <button class="add-btn" onclick="addDish()">Ajouter au menu</button>
     </div>
@@ -444,26 +444,12 @@
       const desc = document.getElementById('dishDesc').value.trim();
       const price = document.getElementById('dishPrice').value.trim();
       const category = document.getElementById('dishCategory').value.trim();
-      const file = document.getElementById('dishImage').files[0];
+      const imageUrl = document.getElementById('dishImageUrl').value.trim();
 
       if (!name || !desc || !price || !category) {
         alert("Tous les champs sont requis.");
         return;
       }
-
-      let imageData = null;
-      if (file) {
-        const reader = new FileReader();
-        const arrayBuffer = await new Promise(resolve => {
-          reader.onload = () => resolve(reader.result);
-          reader.readAsArrayBuffer(file);
-        });
-        const bytes = new Uint8Array(arrayBuffer);
-        let binary = '';
-        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-        const base64 = btoa(binary);
-        const mimeType = file.type || 'image/jpeg';
-        imageData = `data:${mimeType};base64,${base64}`;      }
 
       fetch(`${BASE_URL}/api/menu/add/${token}`, {
         method: 'POST',
@@ -473,7 +459,7 @@
           description: desc,
           price,
           category,
-          image_data: imageData
+          image_url: imageUrl || null
         })
       })
       .then(res => {
@@ -483,7 +469,7 @@
           document.getElementById('dishDesc').value = '';
           document.getElementById('dishPrice').value = '';
           document.getElementById('dishCategory').value = '';
-          document.getElementById('dishImage').value = '';
+          document.getElementById('dishImageUrl').value = '';
         } else {
           alert('Erreur lors de l’ajout.');
         }
