@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name=" viewport" content="width=device-width, initial-scale=1.0" />
   <title>Staff – Gestion des Commandes</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
@@ -113,8 +113,7 @@
       margin-top: 20px;
     }
     .menu-inputs input,
-    .menu-inputs textarea,
-    .menu-inputs select {
+    .menu-inputs textarea {
       width: 100%;
       padding: 10px;
       margin-bottom: 12px;
@@ -204,6 +203,7 @@
   </div>
 
   <script>
+    // ✅ CORRIGÉ : URL sans espaces
     const BASE_URL = 'https://backend-menu-cloudinary-production.up.railway.app';
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
@@ -240,7 +240,8 @@
         .then(orders => {
           allOrders = orders;
           renderOrders(orders);
-        });
+        })
+        .catch(console.error);
     }
 
     function renderOrders(orders) {
@@ -253,7 +254,7 @@
         <div class="order" data-id="${o.id}">
           <div class="order-header">
             <span>Commande #${o.id} • ${o.table_number || 'À emporter'}</span>
-            <span>${new Date(o.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+            <span>${new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
           </div>
           <div class="order-items">
             ${o.items.map(i => `<div class="order-item">• ${i.dish.name} x${i.quantity}</div>`).join('')}
@@ -317,10 +318,17 @@
         imageData = `${mimeType};base64,${base64}`;
       }
 
+      // ✅ CORRIGÉ : syntaxe objet JavaScript valide
       fetch(`${BASE_URL}/api/menu/add/${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, description: desc, price, category, image_ imageData })
+        body: JSON.stringify({
+          name,
+          description: desc,
+          price,
+          category,
+          image: imageData
+        })
       })
       .then(res => {
         if (res.ok) {
