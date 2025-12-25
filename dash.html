@@ -463,8 +463,7 @@
         for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
         const base64 = btoa(binary);
         const mimeType = file.type || 'image/jpeg';
-        imageData = `${mimeType};base64,${base64}`;
-      }
+        imageData = `data:${mimeType};base64,${base64}`;      }
 
       fetch(`${BASE_URL}/api/menu/add/${token}`, {
         method: 'POST',
