@@ -41,8 +41,14 @@
       padding-bottom: 8px;
     }
 
-    .filters::-webkit-scrollbar { display: none; }
-    .filters { -ms-overflow-style: none; scrollbar-width: none; }
+    .filters::-webkit-scrollbar {
+      display: none;
+    }
+
+    .filters {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
 
     .filter-btn {
       flex: 0 0 auto;
@@ -57,7 +63,8 @@
       transition: background 0.2s;
     }
 
-    .filter-btn.active, .filter-btn:hover {
+    .filter-btn.active,
+    .filter-btn:hover {
       background: #c8b69c;
     }
 
@@ -73,7 +80,7 @@
       background: white;
       border-radius: 12px;
       overflow: hidden;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
       padding: 12px;
       display: flex;
       flex-direction: column;
@@ -119,7 +126,9 @@
       grid-column: 1 / -1;
     }
 
-    .hidden { display: none; }
+    .hidden {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -142,33 +151,35 @@
 
     if (!token) {
       document.getElementById('menuContainer').innerHTML = '<p class="empty-message" style="color:red;">Lien invalide.</p>';
-      throw new Error('Token manquant');
-    }
+    } else {
+      const menuContainer = document.getElementById('menuContainer');
+      const filtersContainer = document.getElementById('filtersContainer');
+      let allDishes = [];
+      let categories = new Set();
 
-    const menuContainer = document.getElementById('menuContainer');
-    const filtersContainer = document.getElementById('filtersContainer');
-    let allDishes = [];
-    let categories = new Set();
+      fetch(`${BASE_URL}/api/menu/${token}`)
+        .then(res => {
+          if (!res.ok) throw new Error('Réponse réseau incorrecte');
+          return res.json();
+        })
+        .then(dishes => {
+          allDishes = dishes;
+          dishes.forEach(d => categories.add(d.category));
 
-    fetch(`${BASE_URL}/api/menu/${token}`)
-      .then(res => res.ok ? res.json() : Promise.reject())
-      .then(dishes => {
-        allDishes = dishes;
-        dishes.forEach(d => categories.add(d.category));
+          categories.forEach(cat => {
+            const btn = document.createElement('button');
+            btn.className = 'filter-btn';
+            btn.textContent = cat;
+            btn.dataset.category = cat;
+            filtersContainer.appendChild(btn);
+          });
 
-        categories.forEach(cat => {
-          const btn = document.createElement('button');
-          btn.className = 'filter-btn';
-          btn.textContent = cat;
-          btn.dataset.category = cat;
-          filtersContainer.appendChild(btn);
+          renderMenu(dishes);
+        })
+        .catch(() => {
+          menuContainer.innerHTML = '<p class="empty-message" style="color:red;">Erreur de chargement.</p>';
         });
-
-        renderMenu(dishes);
-      })
-      .catch(() => {
-        menuContainer.innerHTML = '<p class="empty-message" style="color:red;">Erreur de chargement.</p>';
-      });
+    }
 
     function renderMenu(items) {
       if (items.length === 0) {
@@ -190,7 +201,7 @@
       });
     }
 
-    filtersContainer.addEventListener('click', (e) => {
+    document.getElementById('filtersContainer').addEventListener('click', (e) => {
       if (!e.target.classList.contains('filter-btn')) return;
 
       document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));

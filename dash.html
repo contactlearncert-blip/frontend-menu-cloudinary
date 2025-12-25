@@ -61,7 +61,8 @@
       font-weight: 500;
     }
 
-    .tab-btn.active, .tab-btn:hover {
+    .tab-btn.active,
+    .tab-btn:hover {
       background: #c8b69c;
     }
 
@@ -85,7 +86,7 @@
       border-radius: 12px;
       padding: 16px;
       margin-bottom: 16px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
     }
 
     .order-header {
@@ -95,10 +96,20 @@
       font-weight: 600;
     }
 
-    .order-items { margin: 12px 0; padding-left: 16px; }
-    .order-item { margin-bottom: 6px; font-size: 0.95rem; }
+    .order-items {
+      margin: 12px 0;
+      padding-left: 16px;
+    }
+    .order-item {
+      margin-bottom: 6px;
+      font-size: 0.95rem;
+    }
 
-    .actions { display: flex; gap: 10px; margin-top: 12px; }
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
     .btn {
       padding: 8px 16px;
       border: none;
@@ -106,15 +117,20 @@
       font-weight: 500;
       cursor: pointer;
     }
-    .btn-confirm { background: #4caf50; color: white; }
-    .btn-delete { background: #f44336; color: white; }
+    .btn-confirm {
+      background: #4caf50;
+      color: white;
+    }
+    .btn-delete {
+      background: #f44336;
+      color: white;
+    }
 
     .menu-inputs {
       margin-top: 20px;
     }
     .menu-inputs input,
-    .menu-inputs textarea,
-    .menu-inputs select {
+    .menu-inputs textarea {
       width: 100%;
       padding: 10px;
       margin-bottom: 12px;
@@ -133,9 +149,13 @@
       width: 100%;
     }
 
-    .file-input { margin-bottom: 12px; }
+    .file-input {
+      margin-bottom: 12px;
+    }
 
-    .hidden { display: none; }
+    .hidden {
+      display: none;
+    }
 
     .validation-bar {
       position: fixed;
@@ -147,7 +167,7 @@
       padding: 14px 16px;
       text-align: center;
       font-weight: 600;
-      box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+      box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
       max-width: 1200px;
       width: calc(100% - 32px);
       border-radius: 12px 12px 0 0;
@@ -212,7 +232,6 @@
       document.body.innerHTML = '<p style="text-align:center;margin-top:40px;color:red;">Accès refusé.</p>';
     }
 
-    // Onglets
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -223,11 +242,10 @@
       });
     });
 
-    // Stats
     fetch(`${BASE_URL}/api/stats/today/${token}`)
       .then(r => r.json())
       .then(data => {
-        document.getElementById('statsBox').textContent = 
+        document.getElementById('statsBox').textContent =
           `Aujourd’hui : ${data.orders_count} commandes • ${data.total_sales} MAD`;
       })
       .catch(console.error);
@@ -240,7 +258,8 @@
         .then(orders => {
           allOrders = orders;
           renderOrders(orders);
-        });
+        })
+        .catch(console.error);
     }
 
     function renderOrders(orders) {
@@ -253,7 +272,7 @@
         <div class="order" data-id="${o.id}">
           <div class="order-header">
             <span>Commande #${o.id} • ${o.table_number || 'À emporter'}</span>
-            <span>${new Date(o.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+            <span>${new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
           </div>
           <div class="order-items">
             ${o.items.map(i => `<div class="order-item">• ${i.dish.name} x${i.quantity}</div>`).join('')}
@@ -325,9 +344,10 @@
       .then(res => {
         if (res.ok) {
           alert('Plat ajouté !');
-          ['dishName','dishDesc','dishPrice','dishCategory'].forEach(id => {
-            document.getElementById(id).value = '';
-          });
+          document.getElementById('dishName').value = '';
+          document.getElementById('dishDesc').value = '';
+          document.getElementById('dishPrice').value = '';
+          document.getElementById('dishCategory').value = '';
           document.getElementById('dishImage').value = '';
         } else {
           alert('Erreur lors de l’ajout.');
