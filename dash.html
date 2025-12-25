@@ -190,6 +190,21 @@
       border-radius: 12px 12px 0 0;
     }
 
+    /* Notification visuelle */
+    #notificationToast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #2e5a4d;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 10000;
+      display: none;
+      font-weight: 500;
+    }
+
     @media (max-width: 768px) {
       .validation-bar {
         position: sticky;
@@ -267,7 +282,16 @@
     Barre de validation – toujours visible
   </div>
 
+  <!-- Notification sonore -->
+  <audio id="notificationSound" preload="auto">
+    <source src="https://notificationsounds.com/storage/sounds/file-sounds-1312-notification.mp3" type="audio/mpeg">
+  </audio>
+
+  <!-- Notification visuelle -->
+  <div id="notificationToast"></div>
+
   <script>
+    // ✅ CORRIGÉ : suppression des espaces dans l'URL
     const BASE_URL = 'https://backend-menu-cloudinary-production.up.railway.app';
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
@@ -276,30 +300,36 @@
       document.body.innerHTML = '<p style="text-align:center;margin-top:40px;color:red;">Accès refusé.</p>';
     }
 
-    // Onglets
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById('pendingTab').classList.toggle('hidden', btn.dataset.tab !== 'pending');
-        document.getElementById('confirmedTab').classList.toggle('hidden', btn.dataset.tab !== 'confirmed');
-        document.getElementById('menuTab').classList.toggle('hidden', btn.dataset.tab !== 'menu');
-        if (btn.dataset.tab === 'pending') loadPendingOrders();
-        if (btn.dataset.tab === 'confirmed') loadConfirmedOrders();
-      });
-    });
-
-    // Stats
-    fetch(`${BASE_URL}/api/stats/today/${token}`)
-      .then(r => r.json())
-      .then(data => {
-        document.getElementById('todaySales').textContent = `${data.total_sales} MAD`;
-        document.getElementById('confirmedOrders').textContent = data.orders_count;
-      })
-      .catch(console.error);
-
     let allPendingOrders = [];
     let allConfirmedOrders = [];
+    let lastOrderCount = 0;
+    let pollingInterval = null;
+
+    // Notification
+    function showNotification(message) {
+      const toast = document.getElementById('notificationToast');
+      const audio = document.getElementById('notificationSound');
+
+      toast.textContent = message;
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 4000);
+
+      if (!document.hidden) {
+        audio.currentTime = 0;
+        audio.play().catch(e => console.log("Son bloqué :", e));
+      }
+    }
+
+    // Stats
+    function loadStats() {
+      fetch(`${BASE_URL}/api/stats/today/${token}`)
+        .then(r => r.json())
+        .then(data => {
+          document.getElementById('todaySales').textContent = `${data.total_sales} MAD`;
+          document.getElementById('confirmedOrders').textContent = data.orders_count;
+        })
+        .catch(console.error);
+    }
 
     function loadPendingOrders() {
       fetch(`${BASE_URL}/api/orders/pending/${token}`)
@@ -307,6 +337,13 @@
         .then(orders => {
           allPendingOrders = orders;
           renderOrders(orders, 'pending');
+
+          // 🔔 Détecter une nouvelle commande
+          if (lastOrderCount > 0 && orders.length > lastOrderCount) {
+            const diff = orders.length - lastOrderCount;
+            showNotification(`🔔 ${diff} nouvelle${diff > 1 ? 's' : ''} commande${diff > 1 ? 's' : ''} !`);
+          }
+          lastOrderCount = orders.length;
         })
         .catch(console.error);
     }
@@ -344,6 +381,7 @@
       `).join('');
     }
 
+    // Recherche
     document.getElementById('searchInput').addEventListener('input', (e) => {
       const term = e.target.value.toLowerCase();
       const filtered = allPendingOrders.filter(o =>
@@ -364,9 +402,11 @@
       renderOrders(filtered, 'confirmed');
     });
 
+    // Actions
     function confirmOrder(id) {
       fetch(`${BASE_URL}/api/order/${id}/confirm`, { method: 'POST' })
         .then(() => {
+          loadStats();
           loadPendingOrders();
           loadConfirmedOrders();
         })
@@ -377,6 +417,7 @@
       if (confirm("Supprimer cette commande ?")) {
         fetch(`${BASE_URL}/api/order/${id}`, { method: 'DELETE' })
           .then(() => {
+            loadStats();
             loadPendingOrders();
             loadConfirmedOrders();
           })
@@ -384,6 +425,20 @@
       }
     }
 
+    // Onglets
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('pendingTab').classList.toggle('hidden', btn.dataset.tab !== 'pending');
+        document.getElementById('confirmedTab').classList.toggle('hidden', btn.dataset.tab !== 'confirmed');
+        document.getElementById('menuTab').classList.toggle('hidden', btn.dataset.tab !== 'menu');
+        if (btn.dataset.tab === 'pending') loadPendingOrders();
+        if (btn.dataset.tab === 'confirmed') loadConfirmedOrders();
+      });
+    });
+
+    // Ajout de plat
     async function addDish() {
       const name = document.getElementById('dishName').value.trim();
       const desc = document.getElementById('dishDesc').value.trim();
@@ -408,7 +463,7 @@
         for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
         const base64 = btoa(binary);
         const mimeType = file.type || 'image/jpeg';
-        imageData = `data:${mimeType};base64,${base64}`;
+        imageData = `${mimeType};base64,${base64}`;
       }
 
       fetch(`${BASE_URL}/api/menu/add/${token}`, {
@@ -437,6 +492,7 @@
       .catch(console.error);
     }
 
+    // Téléchargement
     function downloadSalesFile() {
       fetch(`${BASE_URL}/api/orders/confirmed/${token}`)
         .then(r => r.json())
@@ -457,9 +513,25 @@
         .catch(console.error);
     }
 
+    // Démarrer le polling
+    function startPolling() {
+      if (pollingInterval) clearInterval(pollingInterval);
+      pollingInterval = setInterval(() => {
+        loadStats();
+        const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
+        if (activeTab === 'pending') {
+          loadPendingOrders();
+        } else if (activeTab === 'confirmed') {
+          loadConfirmedOrders();
+        }
+      }, 5000);
+    }
+
     // Chargement initial
+    loadStats();
     loadPendingOrders();
     loadConfirmedOrders();
+    startPolling();
   </script>
 </body>
 </html>
