@@ -184,30 +184,6 @@
       color: #155724;
     }
 
-    /* Table selector */
-    .table-selector {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin: 10px 0;
-      padding: 10px;
-      background: #f5f5f5;
-      border-radius: 8px;
-    }
-
-    .table-selector label {
-      font-size: 0.9rem;
-      color: #555;
-    }
-
-    .table-selector input {
-      width: 100px;
-      padding: 6px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      font-size: 0.9rem;
-    }
-
     @media (max-width: 768px) {
       .header {
         flex-direction: column;
@@ -239,16 +215,12 @@
     Chargement du menu...
   </div>
 
-  <div class="table-selector">
-    <label>Numéro de table :</label>
-    <input type="text" id="tableNumber" placeholder="Ex: Table 1" />
-  </div>
-
   <div class="checkout-bar" id="checkoutBar">
     Passer la commande
   </div>
 
   <script>
+    // ✅ CORRIGÉ : suppression des espaces dans l'URL
     const BASE_URL = 'https://backend-menu-cloudinary-production.up.railway.app';
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
@@ -262,7 +234,6 @@
     const searchInput = document.getElementById('searchInput');
     const checkoutBar = document.getElementById('checkoutBar');
     const statusBanner = document.getElementById('statusBanner');
-    const tableNumberInput = document.getElementById('tableNumber');
     let allDishes = [];
     let cart = {}; // { dishId: quantity }
     let currentOrderId = null;
@@ -366,7 +337,9 @@
         return;
       }
 
-      const tableNumber = tableNumberInput.value.trim() || "À emporter";
+      // ✅ Prompt seulement au clic
+      const tableNumber = prompt("Veuillez entrer le numéro de table (ou laissez vide pour 'À emporter') :") || "À emporter";
+
       const items = Object.keys(cart).map(id => ({
         id: parseInt(id),
         quantity: cart[id]
@@ -383,15 +356,12 @@
           const data = await response.json();
           currentOrderId = data.order_id;
 
-          // Affiche le message PERSISTANT
           statusBanner.textContent = "Votre commande est en attente de confirmation par le staff.";
           statusBanner.className = "status-banner pending";
           statusBanner.style.display = "block";
 
-          // Commence à poller le statut
           startPollingStatus(currentOrderId);
 
-          // Réinitialise le panier
           cart = {};
           renderMenu(allDishes);
 
