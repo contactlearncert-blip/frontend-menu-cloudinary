@@ -112,13 +112,13 @@
       margin-bottom: 16px;
     }
 
-    .orders-container {
+    .orders-container, .menu-list-container {
       flex: 1;
       overflow-y: auto;
       max-height: calc(100vh - 300px);
     }
 
-    .order {
+    .order, .menu-item-card {
       background: white;
       border-radius: 12px;
       padding: 16px;
@@ -126,7 +126,7 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.08);
     }
 
-    .order-header {
+    .order-header, .menu-item-header {
       display: flex;
       justify-content: space-between;
       margin-bottom: 12px;
@@ -136,7 +136,12 @@
     .order-items { margin: 12px 0; padding-left: 16px; }
     .order-item { margin-bottom: 6px; font-size: 0.95rem; }
 
-    .actions { display: flex; gap: 10px; margin-top: 12px; }
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
     .btn {
       padding: 8px 16px;
       border: none;
@@ -144,12 +149,14 @@
       font-weight: 500;
       cursor: pointer;
     }
+
     .btn-confirm { background: #4caf50; color: white; }
     .btn-delete { background: #f44336; color: white; }
 
     .menu-inputs {
       margin-top: 20px;
     }
+
     .menu-inputs input,
     .menu-inputs textarea {
       width: 100%;
@@ -252,6 +259,10 @@
       </div>
       <button class="add-btn" onclick="addDish()">Ajouter au menu</button>
     </div>
+    <h3 style="margin-top: 24px; margin-bottom: 12px;">Plats du menu</h3>
+    <div class="menu-list-container" id="menuList">
+      <p>Chargement...</p>
+    </div>
   </div>
 
   <!-- Notification sonore -->
@@ -263,7 +274,7 @@
   <div id="notificationToast"></div>
 
   <script>
-    // ✅ CORRIGÉ : suppression des espaces dans l'URL
+    // ✅ CORRIGÉ : suppression des espaces
     const BASE_URL = 'https://backend-menu-cloudinary-production.up.railway.app';
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
@@ -281,11 +292,9 @@
     function showNotification(message) {
       const toast = document.getElementById('notificationToast');
       const audio = document.getElementById('notificationSound');
-
       toast.textContent = message;
       toast.style.display = 'block';
       setTimeout(() => { toast.style.display = 'none'; }, 4000);
-
       if (!document.hidden) {
         audio.currentTime = 0;
         audio.play().catch(e => console.log("Son bloqué :", e));
@@ -309,8 +318,6 @@
         .then(orders => {
           allPendingOrders = orders;
           renderOrders(orders, 'pending');
-
-          // 🔔 Détecter une nouvelle commande
           if (lastOrderCount > 0 && orders.length > lastOrderCount) {
             const diff = orders.length - lastOrderCount;
             showNotification(`🔔 ${diff} nouvelle${diff > 1 ? 's' : ''} commande${diff > 1 ? 's' : ''} !`);
@@ -330,6 +337,32 @@
         .catch(console.error);
     }
 
+    // ✅ Charger et afficher les plats
+    function loadMenuItems() {
+      fetch(`${BASE_URL}/api/menu/${token}`)
+        .then(r => r.json())
+        .then(dishes => {
+          const container = document.getElementById('menuList');
+          if (dishes.length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:#777;">Aucun plat ajouté.</p>';
+            return;
+          }
+          container.innerHTML = dishes.map(d => `
+            <div class="menu-item-card">
+              <div class="menu-item-header">
+                <span>${d.name} • ${d.price}</span>
+                <button class="btn btn-delete" onclick="deleteDish(${d.id})">Supprimer</button>
+              </div>
+              <p>${d.description || ''} • ${d.category}</p>
+              ${d.image_url ? `<img src="${d.image_url}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;margin-top:8px;">` : ''}
+            </div>
+          `).join('');
+        })
+        .catch(() => {
+          document.getElementById('menuList').innerHTML = '<p style="color:red;">Erreur de chargement du menu.</p>';
+        });
+    }
+
     function renderOrders(orders, tab) {
       const container = document.getElementById(tab === 'pending' ? 'pendingOrders' : 'confirmedOrdersList');
       if (orders.length === 0) {
@@ -339,7 +372,8 @@
       container.innerHTML = orders.map(o => `
         <div class="order" data-id="${o.id}">
           <div class="order-header">
-            <span>Commande #${o.id} • ${o.table_number || 'À emporter'}</span>
+            <!-- ✅ Affiche "Table N" si fourni -->
+            <span>Commande #${o.id} • ${o.table_number && o.table_number.toLowerCase().includes('table') ? o.table_number : (o.table_number || 'À emporter')}</span>
             <span>${new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
           </div>
           <div class="order-items">
@@ -374,7 +408,7 @@
       renderOrders(filtered, 'confirmed');
     });
 
-    // Actions
+    // Actions commandes
     function confirmOrder(id) {
       fetch(`${BASE_URL}/api/order/${id}/confirm`, { method: 'POST' })
         .then(() => {
@@ -397,6 +431,15 @@
       }
     }
 
+    // ✅ Supprimer un plat
+    function deleteDish(dishId) {
+      if (confirm("Supprimer ce plat du menu ?")) {
+        fetch(`${BASE_URL}/api/menu/${dishId}`, { method: 'DELETE' })
+          .then(() => loadMenuItems())
+          .catch(console.error);
+      }
+    }
+
     // Onglets
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -407,6 +450,7 @@
         document.getElementById('menuTab').classList.toggle('hidden', btn.dataset.tab !== 'menu');
         if (btn.dataset.tab === 'pending') loadPendingOrders();
         if (btn.dataset.tab === 'confirmed') loadConfirmedOrders();
+        if (btn.dataset.tab === 'menu') loadMenuItems();
       });
     });
 
@@ -442,6 +486,7 @@
           document.getElementById('dishPrice').value = '';
           document.getElementById('dishCategory').value = '';
           document.getElementById('dishImageUrl').value = '';
+          loadMenuItems(); // ✅ Rafraîchit la liste
         } else {
           alert('Erreur lors de l’ajout.');
         }
