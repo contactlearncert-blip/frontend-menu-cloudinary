@@ -84,7 +84,7 @@
 
     .menu-container {
       flex: 1;
-      padding: 0 20px 80px; /* ✅ Espace en bas pour la barre */
+      padding: 0 20px 80px; /* Espace en bas pour la barre */
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -136,18 +136,25 @@
       margin-bottom: 10px;
     }
 
+    /* Nouvelle ligne : quantité + prix sur la même ligne */
+    .controls-and-price {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 8px;
+    }
+
     .price {
       font-weight: 600;
       color: #2e5a4d;
-      margin-top: 6px;
       font-size: 1.05rem;
+      white-space: nowrap;
     }
 
     .quantity-controls {
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-top: 8px;
     }
 
     .qty-btn {
@@ -321,11 +328,13 @@
           ${item.image_url ? `<img src="${item.image_url}" onerror="this.style.display='none'">` : ''}
           <h3>${item.name}</h3>
           <p>${item.description || ''}</p>
-          <div class="price">${item.price}</div>
-          <div class="quantity-controls">
-            <button class="qty-btn minus" data-id="${item.id}">−</button>
-            <span class="qty-display">${qty}</span>
-            <button class="qty-btn plus" data-id="${item.id}">+</button>
+          <div class="controls-and-price">
+            <div class="quantity-controls">
+              <button class="qty-btn minus" data-id="${item.id}">−</button>
+              <span class="qty-display">${qty}</span>
+              <button class="qty-btn plus" data-id="${item.id}">+</button>
+            </div>
+            <div class="price">${item.price}</div>
           </div>
         `;
         grid.appendChild(div);
