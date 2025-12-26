@@ -52,16 +52,42 @@
       font-size: 0.95rem;
     }
 
+    /* Filtres par catégorie */
+    .filters {
+      display: flex;
+      gap: 12px;
+      padding: 0 20px;
+      margin: 12px 0;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .filters::-webkit-scrollbar { display: none; }
+    .filters { -ms-overflow-style: none; scrollbar-width: none; }
+
+    .filter-btn {
+      flex: 0 0 auto;
+      padding: 8px 16px;
+      background: #e5d9c5;
+      border: none;
+      border-radius: 20px;
+      font-size: 0.95rem;
+      color: #4a4a4a;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.2s;
+    }
+
+    .filter-btn.active, .filter-btn:hover {
+      background: #c8b69c;
+    }
+
     .menu-container {
       flex: 1;
-      padding: 20px;
+      padding: 0 20px 80px; /* ✅ Espace en bas pour la barre */
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      text-align: center;
-      color: #777;
-      font-size: 1.1rem;
     }
 
     .menu-grid {
@@ -198,6 +224,9 @@
       .menu-item img {
         height: 150px;
       }
+      .menu-container {
+        padding: 0 16px 80px;
+      }
     }
   </style>
 </head>
@@ -207,8 +236,12 @@
   <div class="header">
     <h1>Menu du Restaurant</h1>
     <div class="search-bar">
-      <input type="text" id="searchInput" placeholder="Rechercher un plat ou une description..." />
+      <input type="text" id="searchInput" placeholder="Rechercher un plat..." />
     </div>
+  </div>
+
+  <div class="filters" id="filtersContainer">
+    <button class="filter-btn active" data-category="All">Tous</button>
   </div>
 
   <div class="menu-container" id="menuContainer">
@@ -220,7 +253,6 @@
   </div>
 
   <script>
-    // ✅ CORRIGÉ : suppression des espaces dans l'URL
     const BASE_URL = 'https://backend-menu-cloudinary-production.up.railway.app';
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
@@ -234,37 +266,57 @@
     const searchInput = document.getElementById('searchInput');
     const checkoutBar = document.getElementById('checkoutBar');
     const statusBanner = document.getElementById('statusBanner');
+    const filtersContainer = document.getElementById('filtersContainer');
     let allDishes = [];
-    let cart = {}; // { dishId: quantity }
+    let cart = {};
     let currentOrderId = null;
     let pollingInterval = null;
 
-    // Charger le menu
     fetch(`${BASE_URL}/api/menu/${token}`)
       .then(res => res.ok ? res.json() : Promise.reject())
       .then(dishes => {
         allDishes = dishes;
         renderMenu(dishes);
+        buildFilters(dishes);
       })
       .catch(() => {
         menuContainer.innerHTML = '<p style="color:red;">Erreur de chargement du menu.</p>';
       });
 
+    function buildFilters(dishes) {
+      const categories = new Set();
+      dishes.forEach(d => categories.add(d.category));
+      
+      filtersContainer.innerHTML = '<button class="filter-btn active" data-category="All">Tous</button>';
+      categories.forEach(cat => {
+        const btn = document.createElement('button');
+        btn.className = 'filter-btn';
+        btn.textContent = cat;
+        btn.dataset.category = cat;
+        filtersContainer.appendChild(btn);
+      });
+
+      filtersContainer.addEventListener('click', (e) => {
+        if (!e.target.classList.contains('filter-btn')) return;
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        const cat = e.target.dataset.category;
+        const filtered = cat === 'All' ? allDishes : allDishes.filter(d => d.category === cat);
+        renderMenu(filtered);
+      });
+    }
+
     function renderMenu(items) {
       if (items.length === 0) {
-        menuContainer.innerHTML = '<p>Aucun plat disponible.</p>';
+        menuContainer.innerHTML = '<p style="text-align:center; margin-top:40px; color:#777;">Aucun plat disponible.</p>';
         return;
       }
-
       menuContainer.innerHTML = `<div class="menu-grid"></div>`;
       const grid = menuContainer.querySelector('.menu-grid');
-
       items.forEach(item => {
         const div = document.createElement('div');
         div.className = 'menu-item';
-
         const qty = cart[item.id] || 0;
-
         div.innerHTML = `
           ${item.image_url ? `<img src="${item.image_url}" onerror="this.style.display='none'">` : ''}
           <h3>${item.name}</h3>
@@ -278,7 +330,6 @@
         `;
         grid.appendChild(div);
       });
-
       updateCheckoutButton();
     }
 
@@ -292,7 +343,7 @@
       renderMenu(filtered);
     });
 
-    // Gestion des clics
+    // Gestion du panier
     document.addEventListener('click', (e) => {
       if (e.target.classList.contains('plus')) {
         const id = parseInt(e.target.dataset.id);
@@ -314,9 +365,7 @@
       const btn = document.querySelector(`[data-id="${id}"]`);
       if (btn) {
         const display = btn.parentElement.querySelector('.qty-display');
-        if (display) {
-          display.textContent = cart[id] || 0;
-        }
+        if (display) display.textContent = cart[id] || 0;
       }
     }
 
@@ -330,20 +379,15 @@
       }
     }
 
-    // Valider la commande
+    // Passer la commande
     checkoutBar.addEventListener('click', async () => {
       if (Object.keys(cart).length === 0) {
         alert("Votre panier est vide.");
         return;
       }
 
-      // ✅ Prompt seulement au clic
-      const tableNumber = prompt("Veuillez entrer le numéro de table (ou laissez vide pour 'À emporter') :") || "À emporter";
-
-      const items = Object.keys(cart).map(id => ({
-        id: parseInt(id),
-        quantity: cart[id]
-      }));
+      const tableNumber = prompt("Numéro de table (facultatif) :") || "À emporter";
+      const items = Object.keys(cart).map(id => ({ id: parseInt(id), quantity: cart[id] }));
 
       try {
         const response = await fetch(`${BASE_URL}/api/order/${token}`, {
@@ -361,10 +405,8 @@
           statusBanner.style.display = "block";
 
           startPollingStatus(currentOrderId);
-
           cart = {};
           renderMenu(allDishes);
-
         } else {
           const errorData = await response.json().catch(() => ({}));
           alert(`Erreur : ${errorData.error || 'Impossible d’envoyer la commande.'}`);
