@@ -388,14 +388,20 @@
       }
     }
 
-    // Passer la commande
+    // Passer la commande – avec gestion d’annulation
     checkoutBar.addEventListener('click', async () => {
       if (Object.keys(cart).length === 0) {
         alert("Votre panier est vide.");
         return;
       }
 
-      const tableNumber = prompt("Numéro de table (facultatif) :") || "À emporter";
+      // ✅ Prompt obligatoire – annulation = sortie
+      const tableNumberInput = prompt("Veuillez entrer le numéro de table :");
+      if (tableNumberInput === null) {
+        return; // L'utilisateur a annulé → pas d'envoi
+      }
+      const tableNumber = tableNumberInput.trim() || "À emporter";
+
       const items = Object.keys(cart).map(id => ({ id: parseInt(id), quantity: cart[id] }));
 
       try {
