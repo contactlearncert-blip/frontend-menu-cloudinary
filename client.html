@@ -136,7 +136,7 @@
       margin-bottom: 10px;
     }
 
-    /* Nouvelle ligne : quantité + prix sur la même ligne */
+    /* Prix + quantité sur la même ligne */
     .controls-and-price {
       display: flex;
       justify-content: space-between;
@@ -342,7 +342,6 @@
       updateCheckoutButton();
     }
 
-    // Recherche
     searchInput.addEventListener('input', (e) => {
       const term = e.target.value.toLowerCase();
       const filtered = allDishes.filter(d =>
@@ -352,7 +351,6 @@
       renderMenu(filtered);
     });
 
-    // Gestion du panier
     document.addEventListener('click', (e) => {
       if (e.target.classList.contains('plus')) {
         const id = parseInt(e.target.dataset.id);
@@ -388,17 +386,19 @@
       }
     }
 
-    // Passer la commande – avec gestion d’annulation
+    // ✅ Gestion complète de la commande + annulation
     checkoutBar.addEventListener('click', async () => {
       if (Object.keys(cart).length === 0) {
         alert("Votre panier est vide.");
         return;
       }
 
-      // ✅ Prompt obligatoire – annulation = sortie
       const tableNumberInput = prompt("Veuillez entrer le numéro de table :");
       if (tableNumberInput === null) {
-        return; // L'utilisateur a annulé → pas d'envoi
+        // ✅ Annulation : vide le panier et rafraîchit
+        cart = {};
+        renderMenu(allDishes);
+        return;
       }
       const tableNumber = tableNumberInput.trim() || "À emporter";
 
