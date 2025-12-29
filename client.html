@@ -84,7 +84,7 @@
 
     .menu-container {
       flex: 1;
-      padding: 0 20px 80px; /* Espace en bas pour la barre */
+      padding: 0 20px 80px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -136,7 +136,6 @@
       margin-bottom: 10px;
     }
 
-    /* Prix + quantité sur la même ligne */
     .controls-and-price {
       display: flex;
       justify-content: space-between;
@@ -217,6 +216,70 @@
       color: #155724;
     }
 
+    /* Écran de confirmation */
+    .confirmation-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      display: none;
+    }
+
+    .confirmation-content {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .confirmation-content h2 {
+      margin-bottom: 16px;
+      color: #2e5a4d;
+      text-align: center;
+    }
+
+    .confirmation-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 1rem;
+    }
+
+    .confirmation-total {
+      margin-top: 16px;
+      font-weight: 600;
+      text-align: right;
+      color: #2e5a4d;
+    }
+
+    .confirmation-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .modal-btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-confirm { background: #4caf50; color: white; }
+    .btn-modify { background: #2e5a4d; color: white; }
+    .btn-cancel { background: #f44336; color: white; }
+
     @media (max-width: 768px) {
       .header {
         flex-direction: column;
@@ -259,6 +322,19 @@
     Passer la commande
   </div>
 
+  <!-- Écran de confirmation -->
+  <div class="confirmation-modal" id="confirmationModal">
+    <div class="confirmation-content">
+      <h2>Résumé de votre commande</h2>
+      <div id="confirmationDetails"></div>
+      <div class="confirmation-actions">
+        <button class="modal-btn btn-confirm" id="btnConfirm">Commander</button>
+        <button class="modal-btn btn-modify" id="btnModify">Modifier</button>
+        <button class="modal-btn btn-cancel" id="btnCancel">Annuler</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const BASE_URL = 'https://backend-menu-cloudinary-production.up.railway.app';
     const urlParams = new URLSearchParams(window.location.search);
@@ -274,10 +350,17 @@
     const checkoutBar = document.getElementById('checkoutBar');
     const statusBanner = document.getElementById('statusBanner');
     const filtersContainer = document.getElementById('filtersContainer');
+    const confirmationModal = document.getElementById('confirmationModal');
+    const confirmationDetails = document.getElementById('confirmationDetails');
+    const btnConfirm = document.getElementById('btnConfirm');
+    const btnModify = document.getElementById('btnModify');
+    const btnCancel = document.getElementById('btnCancel');
+
     let allDishes = [];
     let cart = {};
     let currentOrderId = null;
     let pollingInterval = null;
+    let currentTableNumber = "";
 
     fetch(`${BASE_URL}/api/menu/${token}`)
       .then(res => res.ok ? res.json() : Promise.reject())
@@ -386,7 +469,7 @@
       }
     }
 
-    // ✅ Gestion complète de la commande + annulation
+    // === NOUVEAU : Afficher le résumé avant envoi ===
     checkoutBar.addEventListener('click', async () => {
       if (Object.keys(cart).length === 0) {
         alert("Votre panier est vide.");
@@ -395,20 +478,42 @@
 
       const tableNumberInput = prompt("Veuillez entrer le numéro de table :");
       if (tableNumberInput === null) {
-        // ✅ Annulation : vide le panier et rafraîchit
         cart = {};
         renderMenu(allDishes);
         return;
       }
-      const tableNumber = tableNumberInput.trim() || "À emporter";
+      currentTableNumber = tableNumberInput.trim() || "À emporter";
 
+      // Calculer le total
+      let total = 0;
+      let detailsHTML = `<p><strong>Table :</strong> ${currentTableNumber}</p><hr>`;
+      for (const id in cart) {
+        const item = allDishes.find(d => d.id == id);
+        if (item) {
+          const priceNum = parseFloat(item.price.replace(' MAD', ''));
+          const lineTotal = priceNum * cart[id];
+          total += lineTotal;
+          detailsHTML += `<div class="confirmation-item">
+            <span>${item.name} × ${cart[id]}</span>
+            <span>${lineTotal.toFixed(2)} MAD</span>
+          </div>`;
+        }
+      }
+      detailsHTML += `<div class="confirmation-total">Total : ${total.toFixed(2)} MAD</div>`;
+
+      confirmationDetails.innerHTML = detailsHTML;
+      confirmationModal.style.display = 'flex';
+    });
+
+    // Gestion des boutons du modal
+    btnConfirm.addEventListener('click', async () => {
       const items = Object.keys(cart).map(id => ({ id: parseInt(id), quantity: cart[id] }));
 
       try {
         const response = await fetch(`${BASE_URL}/api/order/${token}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ table_number: tableNumber, items })
+          body: JSON.stringify({ table_number: currentTableNumber, items })
         });
 
         if (response.ok) {
@@ -422,6 +527,7 @@
           startPollingStatus(currentOrderId);
           cart = {};
           renderMenu(allDishes);
+          confirmationModal.style.display = 'none';
         } else {
           const errorData = await response.json().catch(() => ({}));
           alert(`Erreur : ${errorData.error || 'Impossible d’envoyer la commande.'}`);
@@ -430,6 +536,16 @@
         alert('Impossible de contacter le serveur. Vérifiez votre connexion.');
         console.error(err);
       }
+    });
+
+    btnModify.addEventListener('click', () => {
+      confirmationModal.style.display = 'none';
+    });
+
+    btnCancel.addEventListener('click', () => {
+      cart = {};
+      renderMenu(allDishes);
+      confirmationModal.style.display = 'none';
     });
 
     function startPollingStatus(orderId) {
